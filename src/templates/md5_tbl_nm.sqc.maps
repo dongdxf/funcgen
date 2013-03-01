@@ -1,0 +1,381 @@
+/***********************************************************************
+ *  Copyright {{ cr_year }}, China UnionPay Co., Ltd. All rights reserved.
+ *
+ *  THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF CHINA UNIONPAY CO.,
+ *  LTD. THE CONTENTS OF THIS FILE MAY NOT BE DISCLOSED TO THIRD
+ *  PARTIES, COPIED OR DUPLICATED IN ANY FORM, IN WHOLE OR IN PART,
+ *  WITHOUT THE PRIOR WRITTEN PERMISSION OF CHINA UNIONPAY CO., LTD.
+ *
+ *
+ *
+ *  Edit History:
+ *      {{ crt_time }} - Created by funcgen.
+ *
+***********************************************************************/
+
+
+#include <string.h>
+
+EXEC SQL INCLUDE sqlca;
+
+#include "{{ tbl_name }}.h"
+
+
+#define  CPY_USERDATA_TO_DBSPACE  memcpy((void *)(&tmp_{{ tbl_name }}), \
+         (void *)p_dstr_{{ tbl_name }}, sizeof(dstr_{{ tbl_name }}))
+#define  CPY_DBSPACE_TO_USERDATA  memcpy((void *)p_dstr_{{ tbl_name }}, \
+         (void *)(&tmp_{{ tbl_name }}), sizeof(dstr_{{ tbl_name }}))
+
+
+EXEC SQL BEGIN DECLARE SECTION;
+    short indvar;
+    EXEC SQL INCLUDE '../include/{{ tblnm }}.h';
+EXEC SQL  END  DECLARE SECTION;
+{% for opr in oprs %}
+
+
+{% if flag == '' %}
+int {{ tbl_name }}{{ flag }}_{{ opr }}(int opr_type, dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% else %}
+int {{ tbl_name }}0{{ flag }}_{{ opr }}(int opr_type, dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% endif %}
+{
+    switch (opr_type)
+    {
+{% for func in funcs %}
+{% if func.type == opr %}
+    case {{ func.macro.name }}:
+{% if flag == '' %}
+        return {{ tbl_name }}{{ flag }}_{{ func.macro.name|lower }}(p_dstr_{{ tbl_name }}, p_sql_code);
+{% else %}
+        return {{ tbl_name }}0{{ flag }}_{{ func.macro.name|lower }}(p_dstr_{{ tbl_name }}, p_sql_code);
+{% endif %}
+
+{% endif %}
+{% endfor %}
+    default:
+        return FAILURE;
+    }
+}
+{% endfor %}
+{% for func in funcs %}
+
+
+{% if func.type == 'sel' %}
+{% if flag == '' %}
+int {{ tbl_name }}{{ flag }}_{{ func.macro.name|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% else %}
+int {{ tbl_name }}0{{ flag }}_{{ func.macro.name|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% endif %}
+{
+    CPY_USERDATA_TO_DBSPACE;
+
+    EXEC SQL
+{% if func.targs|length == 1 %}
+        SELECT {{ func.targs[0][1] }}
+{% else %}
+{% for targ in func.targs %}
+{% if loop.first %}
+        SELECT {{ targ[1] }},
+{% elif loop.last %}
+               {{ targ[1] }}
+{% else %}
+               {{ targ[1] }},
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if func.targs|length == 1 %}
+        INTO   :tmp_{{ tbl_name }}.{{ func.targs[0][1] }}:indvar
+{% else %}
+{% for targ in func.targs %}
+{% if loop.first %}
+        INTO   :tmp_{{ tbl_name }}.{{ targ[1] }}:indvar,
+{% elif loop.last %}
+               :tmp_{{ tbl_name }}.{{ targ[1] }}:indvar
+{% else %}
+               :tmp_{{ tbl_name }}.{{ targ[1] }}:indvar,
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if func.conds|length == 0 %}
+        FROM   {{ tbl_schema }}.{{ tbl_name }}{{ flag }};
+{% else %}
+        FROM   {{ tbl_schema }}.{{ tbl_name }}{{ flag }}
+{% if func.conds|length == 1 %}
+        WHERE  {{ func.conds[0][1] }} = :tmp_{{ tbl_name }}.{{ func.conds[0][1] }};
+{% else %}
+{% for cond in func.conds %}
+{% if loop.first %}
+        WHERE  {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }}
+{% elif loop.last %}
+          AND  {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }};
+{% else %}
+          AND  {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+    *p_sql_code = sqlca.sqlcode;
+
+    if (sqlca.sqlcode)
+    {
+        return FAILURE;
+    }
+
+    CPY_DBSPACE_TO_USERDATA;
+
+    return SUCCESS;
+}
+{% elif func.type == 'ins' %}
+{% if flag == '' %}
+int {{ tbl_name }}{{ flag }}_{{ func.macro.name|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% else %}
+int {{ tbl_name }}0{{ flag }}_{{ func.macro.name|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% endif %}
+{
+    CPY_USERDATA_TO_DBSPACE;
+
+    EXEC SQL
+        INSERT INTO {{ tbl_schema }}.{{ tbl_name }}{{ flag }}
+               (
+{% for targ in func.targs %}
+{% if loop.last %}
+                {{ targ[1] }}
+{% else %}
+                {{ targ[1] }},
+{% endif %}
+{% endfor %}
+               )
+        VALUES (
+{% for targ in func.targs %}
+{% if loop.last %}
+               :tmp_{{ tbl_name }}.{{ targ[1] }}
+{% else %}
+               :tmp_{{ tbl_name }}.{{ targ[1] }},
+{% endif %}
+{% endfor %}
+               );
+
+    *p_sql_code = sqlca.sqlcode;
+
+    if (sqlca.sqlcode)
+    {
+        return FAILURE;
+    }
+
+    return SUCCESS;
+}
+{% elif func.type == 'upd' %}
+{% if flag == '' %}
+int {{ tbl_name }}{{ flag }}_{{ func.macro.name|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% else %}
+int {{ tbl_name }}0{{ flag }}_{{ func.macro.name|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% endif %}
+{
+    CPY_USERDATA_TO_DBSPACE;
+
+    EXEC SQL
+        UPDATE {{ tbl_schema }}.{{ tbl_name }}{{ flag }}
+{% if func.targs|length == 1 %}
+        SET    {{ func.targs[0][1] }} = :tmp_{{ tbl_name }}.{{ func.targs[0][1] }}
+{% else %}
+{% for targ in func.targs %}
+{% if loop.first %}
+        SET    {{ targ[1] }} = :tmp_{{ tbl_name }}.{{ targ[1] }},
+{% elif loop.last %}
+               {{ targ[1] }} = :tmp_{{ tbl_name }}.{{ targ[1] }}
+{% else %}
+               {{ targ[1] }} = :tmp_{{ tbl_name }}.{{ targ[1] }},
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if func.conds|length == 1 %}
+        WHERE  {{ func.conds[0][1] }} = :tmp_{{ tbl_name }}.{{ func.conds[0][1] }};
+{% else %}
+{% for cond in func.conds %}
+{% if loop.first %}
+        WHERE  {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }}
+{% elif loop.last %}
+          AND  {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }};
+{% else %}
+          AND  {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+    *p_sql_code = sqlca.sqlcode;
+
+    if (sqlca.sqlcode)
+    {
+        return FAILURE;
+    }
+
+    return SUCCESS;
+}
+{% elif func.type == 'del' %}
+{% if flag == '' %}
+int {{ tbl_name }}{{ flag }}_{{ func.macro.name|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% else %}
+int {{ tbl_name }}0{{ flag }}_{{ func.macro.name|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% endif %}
+{
+    CPY_USERDATA_TO_DBSPACE;
+
+    EXEC SQL
+        DELETE FROM {{ tbl_schema }}.{{ tbl_name }}{{ flag }}
+{% if func.conds|length == 1 %}
+        WHERE  {{ func.conds[0][1] }} = :tmp_{{ tbl_name }}.{{ func.conds[0][1] }};
+{% else %}
+{% for cond in func.conds %}
+{% if loop.first %}
+        WHERE  {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }}
+{% elif loop.last %}
+          AND  {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }};
+{% else %}
+          AND  {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+    *p_sql_code = sqlca.sqlcode;
+
+    if (sqlca.sqlcode)
+    {
+        return FAILURE;
+    }
+
+    return SUCCESS;
+}
+{% elif func.type == 'dcl' %}
+{% if flag == '' %}
+int {{ tbl_name }}{{ flag }}_{{ func.macro.name|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% else %}
+int {{ tbl_name }}0{{ flag }}_{{ func.macro.name|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% endif %}
+{
+    CPY_USERDATA_TO_DBSPACE;
+
+    EXEC SQL
+        DECLARE {{ cur_prefix }}{{ flag }}_cur{{ loop.cycle('01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64', '65', '66', '67', '68', '69', '70', '71', '72', '73', '74', '75', '76', '77', '78', '79', '80', '81', '82', '83', '84', '85', '86', '87', '88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99') }} CURSOR FOR
+{% if func.targs|length == 1 %}
+        SELECT  {{ func.targs[0][1] }}
+{% else %}
+{% for targ in func.targs %}
+{% if loop.first %}
+        SELECT  {{ targ[1] }},
+{% elif loop.last %}
+                {{ targ[1] }}
+{% else %}
+                {{ targ[1] }},
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if func.conds|length == 0 %}
+        FROM    {{ tbl_schema }}.{{ tbl_name }}{{ flag }};
+{% else %}
+        FROM    {{ tbl_schema }}.{{ tbl_name }}{{ flag }}
+{% if func.conds|length == 1 %}
+        WHERE   {{ func.conds[0][1] }} = :tmp_{{ tbl_name }}.{{ func.conds[0][1] }};
+{% else %}
+{% for cond in func.conds %}
+{% if loop.first %}
+        WHERE   {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }}
+{% elif loop.last %}
+          AND   {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }};
+{% else %}
+          AND   {{ cond[1] }} = :tmp_{{ tbl_name }}.{{ cond[1] }}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+    *p_sql_code = sqlca.sqlcode;
+
+    if (sqlca.sqlcode)
+    {
+        return FAILURE;
+    }
+
+    return SUCCESS;
+}
+
+
+{% if flag == '' %}
+int {{ tbl_name }}{{ flag }}_opn{{ func.macro.name[3:]|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% else %}
+int {{ tbl_name }}0{{ flag }}_opn{{ func.macro.name[3:]|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% endif %}
+{
+
+    EXEC SQL OPEN {{ cur_prefix }}{{ flag }}_cur{{ loop.cycle('01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64', '65', '66', '67', '68', '69', '70', '71', '72', '73', '74', '75', '76', '77', '78', '79', '80', '81', '82', '83', '84', '85', '86', '87', '88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99') }};
+
+    *p_sql_code = sqlca.sqlcode;
+
+    if (sqlca.sqlcode)
+    {
+        return FAILURE;
+    }
+
+    return SUCCESS;
+}
+
+
+{% if flag == '' %}
+int {{ tbl_name }}{{ flag }}_fec{{ func.macro.name[3:]|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% else %}
+int {{ tbl_name }}0{{ flag }}_fec{{ func.macro.name[3:]|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% endif %}
+{
+    CPY_USERDATA_TO_DBSPACE;
+
+    EXEC SQL
+        FETCH {{ cur_prefix }}{{ flag }}_cur{{ loop.cycle('01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64', '65', '66', '67', '68', '69', '70', '71', '72', '73', '74', '75', '76', '77', '78', '79', '80', '81', '82', '83', '84', '85', '86', '87', '88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99') }}
+{% if func.targs|length == 1 %}
+        INTO  :tmp_{{ tbl_name }}.{{ func.targs[0][1] }}:indvar;
+{% else %}
+{% for targ in func.targs %}
+{% if loop.first %}
+        INTO  :tmp_{{ tbl_name }}.{{ targ[1] }}:indvar,
+{% elif loop.last %}
+              :tmp_{{ tbl_name }}.{{ targ[1] }}:indvar;
+{% else %}
+              :tmp_{{ tbl_name }}.{{ targ[1] }}:indvar,
+{% endif %}
+{% endfor %}
+{% endif %}
+
+    *p_sql_code = sqlca.sqlcode;
+
+    if (sqlca.sqlcode)
+    {
+        return FAILURE;
+    }
+
+    CPY_DBSPACE_TO_USERDATA;
+
+    return SUCCESS;
+}
+
+
+{% if flag == '' %}
+int {{ tbl_name }}{{ flag }}_cls{{ func.macro.name[3:]|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% else %}
+int {{ tbl_name }}0{{ flag }}_cls{{ func.macro.name[3:]|lower }}(dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{% endif %}
+{
+
+    EXEC SQL CLOSE {{ cur_prefix }}{{ flag }}_cur{{ loop.cycle('01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64', '65', '66', '67', '68', '69', '70', '71', '72', '73', '74', '75', '76', '77', '78', '79', '80', '81', '82', '83', '84', '85', '86', '87', '88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99') }};
+
+    *p_sql_code = sqlca.sqlcode;
+
+    if (sqlca.sqlcode)
+    {
+        return FAILURE;
+    }
+
+    return SUCCESS;
+}
+{% endif %}
+{% endfor %}
+

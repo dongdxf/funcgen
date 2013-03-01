@@ -1,0 +1,51 @@
+#logger.cfg
+
+############################################################
+[loggers]
+keys=root,lgutil
+
+[handlers]
+keys=filehdlr,memhdlr
+
+[formatters]
+keys=fhfmt,mhfmt
+############################################################
+
+############################################################
+[logger_root]
+level=NOTSET
+handlers=filehdlr,memhdlr
+
+[logger_lgutil]
+level=NOTSET
+handlers=filehdlr,memhdlr
+propagate=1
+qualname=fg.lgutil
+############################################################
+
+############################################################
+[handler_filehdlr]
+class=FileHandler
+level=NOTSET
+formatter=fhfmt
+args=('log\\pylog.log', 'a')
+
+[handler_memhdlr]
+class=handlers.MemoryHandler
+level=NOTSET
+formatter=mhfmt
+target=
+args=(10, ERROR)
+############################################################
+
+############################################################
+[formatter_fhfmt]
+class=logging.Formatter
+format=[<%(asctime)s><%(filename)s:%(lineno)d><%(levelname)-8s>] %(message)s
+#datefmt=%Y-%m-%d %H:%M:%S %f    # '%f' causes a crash. It may be a bug.
+
+[formatter_mhfmt]
+class=logging.Formatter
+format=[<%(filename)s:%(lineno)d><%(levelname)-8s>] %(message)s
+#datefmt=%Y-%m-%d %H:%M:%S %f    # '%f' causes a crash. It may be a bug.
+############################################################

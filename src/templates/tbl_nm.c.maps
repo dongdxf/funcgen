@@ -1,0 +1,35 @@
+/***********************************************************************
+ *  Copyright {{ cr_year }}, China UnionPay Co., Ltd. All rights reserved.
+ *
+ *  THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF CHINA UNIONPAY CO.,
+ *  LTD. THE CONTENTS OF THIS FILE MAY NOT BE DISCLOSED TO THIRD
+ *  PARTIES, COPIED OR DUPLICATED IN ANY FORM, IN WHOLE OR IN PART,
+ *  WITHOUT THE PRIOR WRITTEN PERMISSION OF CHINA UNIONPAY CO., LTD.
+ *
+ *
+ *
+ *  Edit History:
+ *      {{ crt_time }} - Created by funcgen.
+ *
+***********************************************************************/
+
+
+#include "{{ tbl_name }}.h"
+{% for opr in oprs %}
+
+
+int {{ tbl_name }}_{{ opr }}(int tbl_flag, int opr_type, dstr_{{ tbl_name }} *p_dstr_{{ tbl_name }}, int *p_sql_code)
+{
+    switch (tbl_flag)
+    {
+{% for flag in flags %}
+    case {{ flag }}:
+        return {{ tbl_name }}0{{ flag }}_{{ opr }}(opr_type, p_dstr_{{ tbl_name }}, p_sql_code);
+
+{% endfor %}
+    default:
+        return FAILURE;
+    }
+}
+{% endfor %}
+
